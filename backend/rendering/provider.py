@@ -1,0 +1,3 @@
+from typing import Protocol
+class VideoProvider(Protocol):
+    async def generate(self,request:dict)->dict: ...
