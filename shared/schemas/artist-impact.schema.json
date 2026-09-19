@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/artist-impact.schema.json",
+  "title": "VideoForge Artist Impact",
+  "type": "object",
+  "required": ["project_id","scale","communication","cta","review"],
+  "properties": {
+    "project_id":{"type":"string"},
+    "scale":{
+      "type":"object",
+      "required":["opportunities"],
+      "properties":{
+        "opportunities":{"type":"array","items":{"$ref":"#/$defs/opportunity"}}
+      }
+    },
+    "communication":{
+      "type":"object",
+      "required":["core_message","hook_candidates","interaction_opportunities"],
+      "properties":{
+        "core_message":{"type":"string"},
+        "hook_candidates":{"type":"array","items":{"$ref":"#/$defs/opportunity"}},
+        "interaction_opportunities":{"type":"array","items":{"$ref":"#/$defs/opportunity"}},
+        "derivative_candidates":{"type":"array","items":{"$ref":"#/$defs/opportunity"}}
+      }
+    },
+    "cta":{
+      "type":"object",
+      "required":["primary","enabled"],
+      "properties":{
+        "enabled":{"type":"boolean"},
+        "primary":{"type":"string"},
+        "secondary":{"type":["string","null"]},
+        "placement_preferences":{"type":"array","items":{"type":"string"}}
+      }
+    },
+    "brand_integrations":{
+      "type":"array",
+      "items":{"$ref":"#/$defs/opportunity"}
+    },
+    "review":{
+      "type":"object",
+      "required":["status"],
+      "properties":{
+        "status":{"enum":["DRAFT","PENDING_REVIEW","APPROVED","REJECTED"]},
+        "reviewer_notes":{"type":"string"}
+      }
+    }
+  },
+  "$defs":{
+    "opportunity":{
+      "type":"object",
+      "required":["id","type","description","approval_state"],
+      "properties":{
+        "id":{"type":"string"},
+        "type":{"type":"string"},
+        "description":{"type":"string"},
+        "scene_ids":{"type":"array","items":{"type":"string"}},
+        "asset_ids":{"type":"array","items":{"type":"string"}},
+        "rationale":{"type":"string"},
+        "integration_risk":{"type":"string"},
+        "approval_state":{"enum":["PROPOSED","APPROVED","REJECTED"]}
+      }
+    }
+  }
+}
