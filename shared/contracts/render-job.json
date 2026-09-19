@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","required":["project_id","scene_id","fingerprint"],"properties":{"project_id":{"type":"string"},"scene_id":{"type":"string"},"fingerprint":{"type":"string"},"state":{"type":"string"}}}
