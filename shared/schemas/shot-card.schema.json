@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/shot-card.schema.json",
+  "title": "VideoForge Shot Card",
+  "type": "object",
+  "required": ["shot_id","section","timing","lyric_intent","visual_interpretation","opening_frame","action_beats","camera","locked_assets","transition_anchor","versioning"],
+  "properties": {
+    "shot_id": {"type":"string"},
+    "section": {"type":"string"},
+    "timing": {
+      "type":"object",
+      "required":["start_seconds","end_seconds","start_frame","end_frame","start_bar","end_bar"],
+      "properties": {
+        "start_seconds":{"type":"number","minimum":0},
+        "end_seconds":{"type":"number","exclusiveMinimum":0},
+        "start_frame":{"type":"integer","minimum":0},
+        "end_frame":{"type":"integer","minimum":0},
+        "start_bar":{"type":"integer","minimum":1},
+        "end_bar":{"type":"integer","minimum":1}
+      }
+    },
+    "lyric_intent":{"type":"string"},
+    "energy":{"type":"integer","minimum":1,"maximum":10},
+    "visual_interpretation":{"enum":["literal","metaphor","abstract"]},
+    "opening_frame":{"type":"string"},
+    "action_beats":{"type":"array","items":{"type":"object","required":["offset_seconds","description"],"properties":{"offset_seconds":{"type":"number","minimum":0},"description":{"type":"string"}}}},
+    "performance":{"type":"string"},
+    "environment_behavior":{"type":"string"},
+    "camera":{"type":"object","required":["framing","lens_language","move"],"properties":{"framing":{"type":"string"},"lens_language":{"type":"string"},"move":{"type":"string"}}},
+    "locked_assets":{"type":"array","items":{"type":"string"}},
+    "transition_anchor":{"type":"object","required":["last_frame","screen_direction"],"properties":{"last_frame":{"type":"string"},"screen_direction":{"type":"string"}}},
+    "cut_target":{"type":"string"},
+    "versioning":{"type":"object","required":["model","prompt_version","asset_version"],"properties":{"provider":{"type":"string"},"model":{"type":"string"},"seed":{"type":["integer","null"]},"prompt_version":{"type":"string"},"asset_version":{"type":"string"}}},
+    "safety":{"type":"object","properties":{"no_text":{"type":"boolean"},"no_logos":{"type":"boolean"},"no_watermarks":{"type":"boolean"},"no_generated_audio":{"type":"boolean"}}}
+  }
+}
