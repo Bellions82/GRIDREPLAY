@@ -5,6 +5,8 @@ from backend.core.fingerprint import render_fingerprint
 from backend.core.state import RenderState
 from backend.database.models import Project, RenderJob, Scene, Shot
 from backend.database.session import session_scope
+from backend.workers.redis_queue import RedisQueue
+from backend.core.config import settings
 
 router = APIRouter()
 
@@ -34,6 +36,7 @@ async def create_project(req: ProjectRequest):
 async def create_render_job(req: JobRequest):
     payload = req.model_dump()
     fp = render_fingerprint(payload)
+    created = False
     async with session_scope() as session:
         existing = await session.scalar(select(RenderJob).where(RenderJob.fingerprint == fp))
         if existing:
@@ -52,4 +55,12 @@ async def create_render_job(req: JobRequest):
         job = RenderJob(project_id=req.project_id, shot_id=shot.id, fingerprint=fp, state=RenderState.CREATED, payload=payload)
         session.add(job)
         await session.flush()
-        return {"job_id": job.id, "state": job.state, "fingerprint": fp, "idempotent": False}
+        job_id = job.id
+        created = True
+    if created:
+        queue = RedisQueue(settings.redis_url)
+        try:
+            await queue.enqueue(job_id, payload)
+        finally:
+            await queue.close()
+    return {"job_id": job_id, "state": RenderState.CREATED, "fingerprint": fp, "idempotent": False}
