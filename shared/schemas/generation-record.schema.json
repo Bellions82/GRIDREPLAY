@@ -1,0 +1,21 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"VideoForge Generation Record",
+  "type":"object",
+  "required":["schema_version","shot_id","version","model","parameters","references","created_at"],
+  "properties":{
+    "schema_version":{"type":"string"},
+    "shot_id":{"type":"string"},
+    "version":{"type":"integer","minimum":1},
+    "provider":{"type":"string"},
+    "model":{"type":"string"},
+    "model_version":{"type":"string"},
+    "prompt":{"type":"string"},
+    "negative_prompt":{"type":"string"},
+    "seed":{"type":["integer","null"]},
+    "parameters":{"type":"object"},
+    "references":{"type":"array","items":{"type":"string"}},
+    "qc_result":{"type":["object","null"]},
+    "created_at":{"type":"string","format":"date-time"}
+  }
+}
