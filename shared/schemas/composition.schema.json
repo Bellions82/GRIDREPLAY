@@ -1,0 +1,14 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"VideoForge Composition Constraints",
+  "type":"object",
+  "properties":{
+    "subject_region":{"type":"string"},
+    "face_visibility":{"type":"string"},
+    "feet_visibility":{"type":"string"},
+    "protected_center":{"type":"boolean"},
+    "vertical_crop_safe":{"type":"boolean"},
+    "text_safe":{"type":"boolean"},
+    "required_props":{"type":"array","items":{"type":"string"}}
+  }
+}
