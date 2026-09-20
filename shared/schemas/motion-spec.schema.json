@@ -1,0 +1,22 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"VideoForge Motion Specification",
+  "type":"object",
+  "required":["schema_version","motion"],
+  "properties":{
+    "schema_version":{"type":"string"},
+    "motion":{
+      "type":"object",
+      "required":["type","tempo","beats"],
+      "properties":{
+        "type":{"type":"string"},
+        "style":{"type":"string"},
+        "tempo":{"type":"string"},
+        "beats":{"type":"array","items":{"type":"string"}},
+        "acceleration":{"type":"string"},
+        "recovery":{"type":"string"},
+        "intensity":{"type":"number","minimum":0,"maximum":1}
+      }
+    }
+  }
+}
