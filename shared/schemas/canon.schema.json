@@ -1,0 +1,26 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"VideoForge Canon",
+  "type":"object",
+  "required":["schema_version","global","characters","worlds","scenes","shots"],
+  "properties":{
+    "schema_version":{"type":"string"},
+    "global":{"$ref":"#/$defs/canonNode"},
+    "characters":{"type":"array","items":{"$ref":"#/$defs/canonNode"}},
+    "worlds":{"type":"array","items":{"$ref":"#/$defs/canonNode"}},
+    "scenes":{"type":"array","items":{"$ref":"#/$defs/canonNode"}},
+    "shots":{"type":"array","items":{"$ref":"#/$defs/canonNode"}}
+  },
+  "$defs":{
+    "canonNode":{
+      "type":"object",
+      "required":["id","locked","constraints"],
+      "properties":{
+        "id":{"type":"string"},
+        "locked":{"type":"boolean"},
+        "constraints":{"type":"object"},
+        "parent_id":{"type":["string","null"]}
+      }
+    }
+  }
+}
