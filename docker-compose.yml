@@ -25,6 +25,13 @@ services:
       REDIS_URL: redis://redis:6379/0
     ports: ['8000:8000']
     depends_on: [postgres,redis,minio]
+  worker:
+    build: ./backend
+    command: python -m backend.workers.run_worker
+    environment:
+      DATABASE_URL: postgresql+asyncpg://videoforge:videoforge@postgres:5432/videoforge
+      REDIS_URL: redis://redis:6379/0
+    depends_on: [postgres,redis,minio]
 volumes:
   postgres_data:
   minio_data:
