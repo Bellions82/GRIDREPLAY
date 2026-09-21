@@ -91,7 +91,7 @@ class RenderWorker:
                     references=payload.get("references", []),
                 )
 
-                qa = self.qa.evaluate({**result, "generation_record": record_data, "shot": shot})
+                qa = await self.qa.evaluate_async({**result, "generation_record": record_data, "shot": shot}, shot=shot)
                 record = GenerationRecord(
                     project_id=job.project_id, shot_id=job.shot_id, job_id=job.id,
                     version=attempt, provider=record_data["provider"], model=record_data["model"],
