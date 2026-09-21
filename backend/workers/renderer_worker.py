@@ -66,6 +66,8 @@ class RenderWorker:
                     shot=shot,
                     motion=motion,
                     composition=payload.get("composition", {}),
+                    continuity_reference=payload.get("approved_continuity_reference"),
+                    repair=payload.get("repair"),
                 )
                 await heartbeat(session, job_id, self.worker_id)
                 await session.commit()
