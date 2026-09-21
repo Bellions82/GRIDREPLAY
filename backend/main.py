@@ -6,13 +6,13 @@ from backend.core.config import settings
 from backend.database.session import engine
 from redis.asyncio import Redis
 
-app = FastAPI(title="VideoForge API", version="4.2.0")
+app = FastAPI(title="VideoForge API", version="4.4.0")
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(router, prefix="/api/v1")
 
 @app.get("/api/v1/health")
 async def health():
-    return {"status": "ok", "service": "videoforge-api", "version": "4.2.0"}
+    return {"status": "ok", "service": "videoforge-api", "version": "4.4.0"}
 
 @app.get("/api/v1/ready")
 async def ready():
