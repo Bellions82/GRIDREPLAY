@@ -1,0 +1,30 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://videoforge.local/schemas/provider-capability.schema.json",
+  "title":"VideoForge Provider Capability",
+  "type":"object",
+  "required":["provider","model","model_version","capabilities"],
+  "properties":{
+    "provider":{"type":"string"},
+    "model":{"type":"string"},
+    "model_version":{"type":"string"},
+    "capabilities":{
+      "type":"object",
+      "properties":{
+        "text_to_video":{"type":"boolean"},
+        "image_to_video":{"type":"boolean"},
+        "first_frame":{"type":"boolean"},
+        "last_frame":{"type":"boolean"},
+        "reference_images":{"type":"boolean"},
+        "character_reference":{"type":"boolean"},
+        "camera_control":{"type":"boolean"},
+        "seed":{"type":"boolean"},
+        "max_duration_seconds":{"type":"number","minimum":0},
+        "supported_aspect_ratios":{"type":"array","items":{"type":"string"}},
+        "supported_resolutions":{"type":"array","items":{"type":"string"}}
+      },
+      "additionalProperties":true
+    }
+  },
+  "additionalProperties":true
+}
