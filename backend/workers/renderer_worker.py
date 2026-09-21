@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from sqlalchemy import select, update
+from sqlalchemy import update
+from backend.core.config import settings
 from backend.core.state import RenderState
-from backend.database.models import RenderJob
+from backend.database.models import GenerationRecord, QAResult, RenderJob
 from backend.database.session import SessionLocal
 from backend.director.motion import MotionPlanner
 from backend.director.prompt_compiler import PromptCompiler
@@ -11,7 +12,6 @@ from backend.rendering.generation_record import build_generation_record
 from backend.rendering.provider import NullVideoProvider
 from backend.workers.lease import claim_job, heartbeat
 from backend.workers.redis_queue import RedisQueue
-from backend.core.config import settings
 
 class RenderWorker:
     def __init__(self, worker_id: str, provider=None):
@@ -27,32 +27,141 @@ class RenderWorker:
         if not item:
             await queue.close()
             return False
+
         job_id = item["job_id"]
+        payload = item.get("payload", {})
+        final_state = RenderState.FAILED
+        requeue_payload = None
+
         async with SessionLocal() as session:
             if not await claim_job(session, job_id, self.worker_id):
                 await session.commit()
                 await queue.close()
                 return True
-            await session.commit()
+
             job = await session.get(RenderJob, job_id)
             if not job:
+                await session.commit()
                 await queue.close()
                 return True
-            payload = job.payload
-            await session.execute(update(RenderJob).where(RenderJob.id == job_id).values(state=RenderState.PROCESSING, attempts=RenderJob.attempts + 1))
+
+            job.state = RenderState.PROCESSING
+            job.attempts += 1
+            attempt = job.attempts
+            payload = job.payload or payload
             await session.commit()
-            shot = payload.get("shot", payload)
-            motion = self.motion.plan(shot)
-            compiled = self.compiler.compile(canon=payload.get("canon", {}), scene=payload.get("scene", {}), shot=shot, motion=motion, composition=payload.get("composition", {}))
-            await heartbeat(session, job_id, self.worker_id)
-            await session.commit()
-            result = await self.provider.generate({**compiled["provider_payload"], "references": payload.get("references", []), "parameters": payload.get("params", {})})
-            record = build_generation_record(shot_id=job.shot_id, version=job.attempts, provider=result.get("provider", "unknown"), model=payload.get("model", "provider-neutral"), model_version=result.get("model_version", ""), prompt=compiled["prompt"], negative_prompt=compiled["negative_prompt"], seed=payload.get("seed"), parameters=payload.get("params", {}), references=payload.get("references", []))
-            qa = self.qa.evaluate({**result, "generation_record": record, "shot": shot})
-            final_state = RenderState.APPROVED if qa["decision"] == "APPROVED" else RenderState.REGENERATE
-            await session.execute(update(RenderJob).where(RenderJob.id == job_id).values(state=final_state, lease_owner=None, lease_expires_at=None, heartbeat_at=None, last_error=None if final_state == RenderState.APPROVED else str(qa)))
-            await session.commit()
+
+            try:
+                shot = payload.get("shot", payload)
+                motion = self.motion.plan(shot)
+                compiled = self.compiler.compile(
+                    canon=payload.get("canon", {}),
+                    scene=payload.get("scene", {}),
+                    shot=shot,
+                    motion=motion,
+                    composition=payload.get("composition", {}),
+                )
+                await heartbeat(session, job_id, self.worker_id)
+                await session.commit()
+
+                result = await self.provider.generate({
+                    **compiled["provider_payload"],
+                    "references": payload.get("references", []),
+                    "parameters": payload.get("params", {}),
+                    "duration": shot.get("duration", 0.0),
+                })
+
+                record_data = build_generation_record(
+                    shot_id=job.shot_id,
+                    version=attempt,
+                    provider=result.get("provider", "unknown"),
+                    model=payload.get("model", "provider-neutral"),
+                    model_version=result.get("model_version", ""),
+                    prompt=compiled["prompt"],
+                    negative_prompt=compiled["negative_prompt"],
+                    seed=payload.get("seed"),
+                    parameters=payload.get("params", {}),
+                    references=payload.get("references", []),
+                )
+
+                qa = self.qa.evaluate({**result, "generation_record": record_data, "shot": shot})
+                record = GenerationRecord(
+                    project_id=job.project_id,
+                    shot_id=job.shot_id,
+                    job_id=job.id,
+                    version=attempt,
+                    provider=record_data["provider"],
+                    model=record_data["model"],
+                    model_version=record_data["model_version"],
+                    prompt=record_data["prompt"],
+                    negative_prompt=record_data["negative_prompt"],
+                    seed=record_data["seed"],
+                    parameters=record_data["parameters"],
+                    references=record_data["references"],
+                    artifact_uri=result.get("artifact_uri"),
+                    artifact_metadata=result,
+                    qc_result=qa,
+                )
+                session.add(record)
+                await session.flush()
+
+                session.add(QAResult(
+                    project_id=job.project_id,
+                    shot_id=job.shot_id,
+                    job_id=job.id,
+                    generation_id=record.id,
+                    attempt=attempt,
+                    technical=qa["technical"],
+                    visual=qa["visual"],
+                    character=qa["character"],
+                    environment=qa["environment"],
+                    temporal=qa["temporal"],
+                    timeline=qa["timeline"],
+                    decision=qa["decision"],
+                    failure_codes=qa["failure_codes"],
+                    repair_plan=qa["repair_plan"],
+                    metrics=qa["metrics"],
+                ))
+
+                if qa["decision"] == "APPROVED":
+                    final_state = RenderState.APPROVED
+                elif attempt >= settings.max_render_attempts:
+                    final_state = RenderState.FAILED
+                    job.last_error = f"max attempts reached: {qa['failure_codes']}"
+                else:
+                    final_state = RenderState.REGENERATE
+                    requeue_payload = {
+                        **payload,
+                        "repair": qa["repair_plan"],
+                        "previous_generation_version": attempt,
+                    }
+
+                job.state = final_state
+                job.lease_owner = None
+                job.lease_expires_at = None
+                job.heartbeat_at = None
+                if final_state == RenderState.APPROVED:
+                    job.last_error = None
+                await session.commit()
+
+            except Exception as exc:
+                job.last_error = str(exc)
+                job.lease_owner = None
+                job.lease_expires_at = None
+                job.heartbeat_at = None
+                if attempt >= settings.max_render_attempts:
+                    final_state = RenderState.FAILED
+                    job.state = final_state
+                    await session.commit()
+                else:
+                    final_state = RenderState.REGENERATE
+                    job.state = final_state
+                    requeue_payload = payload
+                    await session.commit()
+
         if final_state == RenderState.REGENERATE:
-            await queue.enqueue(job_id, payload)
+            await queue.enqueue(job_id, requeue_payload or payload)
+        elif final_state == RenderState.FAILED:
+            await queue.dead_letter_job(job_id, payload, "render/qa failure")
         await queue.close()
         return True
