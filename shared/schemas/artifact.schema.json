@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://videoforge.local/schemas/artifact.schema.json",
+  "title": "VideoForge Artifact",
+  "type": "object",
+  "required": ["schema_version","artifact_status","media_type"],
+  "properties": {
+    "schema_version": {"type":"string"},
+    "artifact_status": {"type":"string","enum":["READY","SIMULATED","FAILED"]},
+    "artifact_uri": {"type":["string","null"]},
+    "media_type": {"type":"string"},
+    "duration": {"type":"number","minimum":0},
+    "fps": {"type":["number","null"],"minimum":0},
+    "width": {"type":["integer","null"],"minimum":1},
+    "height": {"type":["integer","null"],"minimum":1},
+    "frame_count": {"type":["integer","null"],"minimum":0},
+    "checksum": {"type":["string","null"]},
+    "provider": {"type":"string"},
+    "model": {"type":"string"},
+    "model_version": {"type":"string"}
+  },
+  "additionalProperties": true
+}
