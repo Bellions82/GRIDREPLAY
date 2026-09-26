@@ -15,8 +15,13 @@ DEFAULT_THRESHOLDS = {
     "environment_similarity": 0.85,
 }
 
+
 class QAEngine:
-    """Evidence-first QA gate. Unknown metrics never silently become passes."""
+    """Evidence-first QA gate.
+
+    Real artifacts require sufficient inspection evidence before approval.
+    Simulation is the only explicit exception for development workflows.
+    """
 
     def __init__(self, visual_inspector=None, technical_inspector=None):
         self.visual_inspector = visual_inspector or VisualInspector()
@@ -49,20 +54,27 @@ class QAEngine:
         if "environment_similarity" in threshold_result["failures"]:
             failures.append("BACKGROUND_DRIFT")
 
-        # Explicit dimension failures remain authoritative.
+        simulated = artifact.get("artifact_status") == "SIMULATED"
+        evidence_missing = bool(threshold_result["unknowns"]) or technical.get("playable") is None
+
+        if evidence_missing and not simulated:
+            failures.append("INSUFFICIENT_QA_EVIDENCE")
+
         dimensions = {
             name: explicit.get(name, "PASS" if not failures else "FAIL")
             for name in DIMENSIONS
         }
 
-        # Development simulation remains passable only when it supplied no failures
-        # and no real inspection values are available.
-        simulated = artifact.get("artifact_status") == "SIMULATED"
-        if simulated and not failures and all(v is None for k, v in visual.items() if k != "source"):
+        if simulated and not failures:
             dimensions = {name: "PASS" for name in DIMENSIONS}
 
-        decision = "APPROVED" if all(value == "PASS" for value in dimensions.values()) else "REGENERATE"
+        decision = (
+            "APPROVED"
+            if all(value == "PASS" for value in dimensions.values())
+            else "REGENERATE"
+        )
         unique_failures = list(dict.fromkeys(failures))
+
         return {
             **dimensions,
             "decision": decision,
@@ -81,14 +93,25 @@ class QAEngine:
         failures = list(explicit.get("failure_codes", []))
         if artifact.get("artifact_status") == "FAILED":
             failures.append("TECHNICAL_FAILURE")
+
+        simulated = artifact.get("artifact_status") == "SIMULATED"
+        if not simulated and not failures:
+            failures.append("INSUFFICIENT_QA_EVIDENCE")
+
         dimensions = {
             name: explicit.get(name, "PASS" if not failures else "FAIL")
             for name in DIMENSIONS
         }
-        if artifact.get("artifact_status") == "SIMULATED" and not failures:
+
+        if simulated and not failures:
             dimensions = {name: "PASS" for name in DIMENSIONS}
+
         unique_failures = list(dict.fromkeys(failures))
-        decision = "APPROVED" if all(value == "PASS" for value in dimensions.values()) else "REGENERATE"
+        decision = (
+            "APPROVED"
+            if all(value == "PASS" for value in dimensions.values())
+            else "REGENERATE"
+        )
         return {
             **dimensions,
             "decision": decision,
